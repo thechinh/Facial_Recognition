@@ -1,8 +1,6 @@
 .DS_Store
 data/
-.ipynb_checkpoints/Untitled-checkpoint.ipynb
-.ipynb_checkpoints/misc-checkpoint.ipynb
-.vscode/settings.json
-__pycache__/queue.cpython-37.pyc
-__pycache__/utils.cpython-37.pyc
-yolo/.ipynb_checkpoints/yolov3-face-checkpoint.cfg
+.ipynb_checkpoints/
+.vscode/
+__pycache__/
+yolo/.**
