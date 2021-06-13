@@ -6,6 +6,7 @@ from numpy import load
 from statistics import mode, mean
 import threading
 from utils import *
+from facenet_architecture import *
 
 ################################################################################
 #######################        GLOBAL SETTINGS        ##########################
@@ -23,6 +24,9 @@ CROP_SIZE = 160 # required
 # BGR
 BLUE = (255,0,0)
 RED  = (0,0,255)
+
+# Facenet
+model_facenet = InceptionResNetV1()
 
 # KNN
 K_UNKWOWN_THRESHOLD = 9
@@ -96,7 +100,7 @@ else:
     
     # Load photos from folder 'data' and feed to KNN
     trainX, trainy = load_dataset('data')
-    model_facenet = tf.keras.models.load_model('facenet_keras.h5')
+    model_facenet.load_weights('facenet_keras_weights.h5')
     newTrainX, trainy, out_encoder = convert_dataset(model_facenet, trainX, trainy)
     knn_model = KNN_fit(newTrainX, MODEL_NAME, K_NB)
 
