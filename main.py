@@ -7,6 +7,7 @@ from statistics import mode, mean
 import threading
 from utils import *
 from facenet_architecture import *
+from time import perf_counter
 
 ################################################################################
 #######################        GLOBAL SETTINGS        ##########################
@@ -19,7 +20,7 @@ net = cv2.dnn.readNetFromDarknet(MODEL, WEIGHT)
 net.setPreferableBackend(cv2.dnn.DNN_BACKEND_OPENCV)
 net.setPreferableTarget(cv2.dnn.DNN_TARGET_CPU)
 IMG_SIZE = 416
-CROP_SIZE = 160 # required
+CROP_SIZE = 160 # Facenet input size
 
 # BGR
 BLUE = (255,0,0)
@@ -31,7 +32,6 @@ model_facenet = InceptionResNetV1()
 # KNN
 K_UNKWOWN_THRESHOLD = 9
 K_NB = 5
-MODEL_NAME = 'holy_KNN.h5'
 
 # Init
 thread_finished = True
@@ -52,7 +52,7 @@ def detect_and_predict(net, frame, IMG_SIZE, predict_mode, model_facenet):
 
     boxes_buffer, confidences = face_detection(net, frame, IMG_SIZE)
     
-    for box in boxes_buffer:
+    for i, box in enumerate(boxes_buffer):
         # Extract position data
         topleft_x, topleft_y, width, height = box[0], box[1], box[2], box[3]
         
@@ -62,9 +62,10 @@ def detect_and_predict(net, frame, IMG_SIZE, predict_mode, model_facenet):
         if predict_mode and (face.size > 0):
             face = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
             resized_face = cv2.resize(face, (CROP_SIZE, CROP_SIZE))
-            # Extract features
+            # Extract feature vector (128 numbers)
             face_emb = get_embedding(model_facenet, resized_face)
             face_emb_array = np.asarray(face_emb)
+            # Reshape to (1,128)
             face_emb_array = face_emb_array.reshape(1,-1)
             # Predict
             text = KNN_predict(knn_model, face_emb_array, trainy, out_encoder, K_UNKWOWN_THRESHOLD)
@@ -102,10 +103,11 @@ else:
     trainX, trainy = load_dataset('data')
     model_facenet.load_weights('facenet_keras_weights.h5')
     newTrainX, trainy, out_encoder = convert_dataset(model_facenet, trainX, trainy)
-    knn_model = KNN_fit(newTrainX, MODEL_NAME, K_NB)
-
-    print(trainX.shape, trainy.shape)
-    print(newTrainX.shape)
+    knn_model = NearestNeighbors(n_neighbors=K_NB).fit(newTrainX)
+    
+    # For debugging only
+    # print(trainX.shape, trainy.shape)
+    # print(newTrainX.shape)
 
 ################################################################################
 #############################        MAIN        ###############################
@@ -121,7 +123,7 @@ while cap.isOpened():
         # Save result
         boxes_cache = boxes_buffer.copy()
         text_cache  = text_buffer.copy()
-        x = threading.Thread(target=detect_and_predict, args=(net, frame, IMG_SIZE, predict_mode, model_facenet,)).start()  
+        _ = threading.Thread(target=detect_and_predict, args=(net, frame, IMG_SIZE, predict_mode, model_facenet,)).start()  
 
     # Draw
     for i, box in enumerate(boxes_cache):
@@ -141,7 +143,7 @@ while cap.isOpened():
         total_save += 1
         print(f'Save a photo of {args["output"]}. ID {total_save}')
         p = os.path.join('data', args["output"], "{}.png".format(str(total_save).zfill(3)))
-        x, y, w, h = boxes_cache[:4]
+        x, y, w, h = boxes_cache[0][:4]
         cv2.imwrite(p, frame[y:y+h, x:x+w])
     elif key == ord("q"):
         break

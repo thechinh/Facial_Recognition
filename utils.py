@@ -20,11 +20,9 @@ def load_faces(directory, required_size=(160, 160)):
 # Load data folder containing images of each person
 def load_dataset(directory):
 	X, y = list(), list()
-	# enumerate folders, on per class
 	for subdir in os.listdir(directory):
-		# path
 		path = os.path.join(directory, subdir)
-		# skip any files that might be in the dir
+		# scan folders only 
 		if not os.path.isdir(path):
 			continue
 		# load all faces in the subdirectory
@@ -32,22 +30,20 @@ def load_dataset(directory):
 		# create labels
 		labels = [subdir for _ in range(len(faces))]
 		# summarize progress
-		print('>loaded %d examples for class: %s' % (len(faces), subdir))
-		# store
+		print('>>> Loaded %d examples for class: %s' % (len(faces), subdir))
+		# save
 		X.extend(faces)
 		y.extend(labels)
 	return np.asarray(X), np.asarray(y)
 
-# Get embedding of 1 face
+# Get embedding (feature vector) of 1 face
 def get_embedding(model, face_pixels):
-    # scale pixel values
     face_pixels = face_pixels.astype('float32')
-    # standardize pixel values across channels (global)
+    # standardize pixel values
     mean, std = face_pixels.mean(), face_pixels.std()
     face_pixels = (face_pixels - mean) / std
-    # transform face into one sample
-    samples = np.expand_dims(face_pixels, axis=0)
     # make prediction to get embedding
+    samples = np.expand_dims(face_pixels, axis=0)
     yhat = model.predict(samples)
     return yhat[0]
 
@@ -63,16 +59,7 @@ def convert_dataset(model, trainX, trainy):
     out_encoder = LabelEncoder()
     out_encoder.fit(trainy)
     trainy = out_encoder.transform(trainy)
-    
     return newTrainX, trainy, out_encoder
-
-def KNN_fit(data, MODEL_NAME, K_NB):
-    if os.path.isfile(MODEL_NAME):
-        model = pickle.load(open(MODEL_NAME, 'rb'))
-    else:
-        model = NearestNeighbors(n_neighbors=K_NB).fit(data)
-        pickle.dump(model, open(MODEL_NAME, 'wb'))
-    return model
 
 def KNN_predict(knn_model, face_emb_array, trainy, out_encoder, K_UNKOWN_THRESHOLD):
     distances, indices = knn_model.kneighbors(face_emb_array)
@@ -81,12 +68,8 @@ def KNN_predict(knn_model, face_emb_array, trainy, out_encoder, K_UNKOWN_THRESHO
         for i in indices[0]:
             label = trainy[i]
             labels.extend([label])
-        try:
             prediction = statistics.mode(labels)
             predict_name = out_encoder.inverse_transform([prediction])
-        # no unique mode; found 2 equally common values
-        except statistics.StatisticsError:
-            predict_name = "Unknown"
     else:
         predict_name = "Unknown"
     
